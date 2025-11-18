@@ -331,7 +331,8 @@ export default function AuthForm() {
           email: email.trim(),
           password,
           options: {
-            emailRedirectTo: "http://localhost:5000/auth/callback",
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+
           },
         });
 
@@ -370,7 +371,8 @@ export default function AuthForm() {
     }
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: "http://localhost:5000/reset-password", // your reset page
+      redirectTo: `${window.location.origin}/reset-password`,
+
     });
 
     if (error) toast.error(error.message);
