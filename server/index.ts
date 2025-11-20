@@ -76,11 +76,12 @@ const port = parseInt(process.env.PORT || "5000", 10);
 //   log(`✅ Server running at http://0.0.0.0:${port}`);
 // });
 
-
+// server.listen(port, "0.0.0.0", () => {
+//   log(`✅ Server running on port ${port}`);
+// });
 // ✅ Fix for Windows
-server.listen(port, "0.0.0.0", () => {
-  log(`✅ Server running on port ${port}`);
+server.listen(port, "localhost", () => {
+  log(`✅ Server running at http://localhost:${port}`);
 });
-
 
 })();

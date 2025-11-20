@@ -679,8 +679,6 @@
 //   );
 // }
 
-
-
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -697,8 +695,6 @@ import {
 import { Upload } from "lucide-react";
 import { supabase } from "@/supabaseClient";
 import toast from "react-hot-toast";
-
-
 
 interface Property {
   id: string;
@@ -783,9 +779,9 @@ export default function AddPropertyForm({
     }
   };
 
-useEffect(() => {
-  console.log("Form Data:", formData);
-}, [formData]);
+  useEffect(() => {
+    console.log("Form Data:", formData);
+  }, [formData]);
   const handleUploadClick = () => {
     fileInputRef.current?.click();
   };
@@ -810,48 +806,47 @@ useEffect(() => {
     e.preventDefault();
     setIsSubmitting(true);
     if (!formData.listingType) {
-    alert("⚠️ Please select a Listing Type");
-    setIsSubmitting(false);
-    return;
-  }
+      alert("⚠️ Please select a Listing Type");
+      setIsSubmitting(false);
+      return;
+    }
 
-  
-// --- Validation block ---
-if (!formData.propertyType) {
-  toast.error("⚠️ Please select a Property Type");
-  setIsSubmitting(false);
-  return;
-}
+    // --- Validation block ---
+    if (!formData.propertyType) {
+      toast.error("⚠️ Please select a Property Type");
+      setIsSubmitting(false);
+      return;
+    }
 
-if (!formData.title.trim()) {
-  toast.error("⚠️ Please enter a Property Title");
-  setIsSubmitting(false);
-  return;
-}
+    if (!formData.title.trim()) {
+      toast.error("⚠️ Please enter a Property Title");
+      setIsSubmitting(false);
+      return;
+    }
 
-if (!formData.location.trim()) {
-  toast.error("⚠️ Please enter Location");
-  setIsSubmitting(false);
-  return;
-}
+    if (!formData.location.trim()) {
+      toast.error("⚠️ Please enter Location");
+      setIsSubmitting(false);
+      return;
+    }
 
-if (!formData.price.trim()) {
-  toast.error("⚠️ Please enter Price");
-  setIsSubmitting(false);
-  return;
-}
+    if (!formData.price.trim()) {
+      toast.error("⚠️ Please enter Price");
+      setIsSubmitting(false);
+      return;
+    }
 
-if (!formData.contactName.trim()) {
-  toast.error("⚠️ Please enter Contact Name");
-  setIsSubmitting(false);
-  return;
-}
+    if (!formData.contactName.trim()) {
+      toast.error("⚠️ Please enter Contact Name");
+      setIsSubmitting(false);
+      return;
+    }
 
-if (!formData.contactPhone.trim()) {
-  toast.error("⚠️ Please enter Contact Phone");
-  setIsSubmitting(false);
-  return;
-}
+    if (!formData.contactPhone.trim()) {
+      toast.error("⚠️ Please enter Contact Phone");
+      setIsSubmitting(false);
+      return;
+    }
 
     try {
       const {
@@ -862,6 +857,30 @@ if (!formData.contactPhone.trim()) {
         alert("⚠️ You must be logged in to add/update a property.");
         return;
       }
+
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData?.user?.id;
+
+      console.log("USER ID:", userId);
+
+      if (!userId) {
+        alert("Please log in.");
+        return;
+      }
+
+      const { data: userProfile, error: profileError } = await supabase
+        .from("users")
+        .select("company_id")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (profileError || !userProfile) {
+        console.error("User profile not found", profileError);
+        alert("❌ User profile not found. Please contact support.");
+        return;
+      }
+
+      const companyId = userProfile.company_id;
 
       // Combine existing and new uploaded images
       const allImages = [...existingImages];
@@ -916,6 +935,7 @@ if (!formData.contactPhone.trim()) {
         const { error } = await supabase.from("properties").insert([
           {
             user_id: user.id,
+            company_id: companyId,
             listing_type: formData.listingType,
             title: formData.title,
             location: formData.location,
@@ -930,11 +950,24 @@ if (!formData.contactPhone.trim()) {
             images: allImages,
             created_at: new Date().toISOString(),
           },
-        ]);
+        ])
+        .select();
 
         if (error) {
           alert("❌ Failed to add property: " + error.message);
         } else {
+          await supabase.from("activity_feed").insert([
+            {
+              user_id: user.id,
+              company_id: companyId,
+              action_type: "property",
+              title: `Property Updated`,
+              description: `Updated property: ${formData.title} (${formData.location})`,
+              related_id: null,
+              created_at: new Date().toISOString(),
+            },
+          ]);
+
           alert("✅ Property added successfully!");
           onSubmit(formData);
           setFormData({
@@ -976,9 +1009,7 @@ if (!formData.contactPhone.trim()) {
             <Label htmlFor="listingType">Listing Type *</Label>
             <Select
               value={formData.listingType}
-              onValueChange={(value) => updateField("listingType", value)
-                
-              }
+              onValueChange={(value) => updateField("listingType", value)}
             >
               <SelectTrigger id="listingType">
                 <SelectValue />
@@ -1073,16 +1104,16 @@ if (!formData.contactPhone.trim()) {
                 placeholder="2"
               />
             </div>
-             <div className="space-y-2">
-    <Label htmlFor="area">Area (sqft)</Label>
-    <Input
-      id="area"
-      type="number"
-      value={formData.area}
-      onChange={(e) => updateField("area", e.target.value)}
-      placeholder="1200"
-    />
-  </div>
+            <div className="space-y-2">
+              <Label htmlFor="area">Area (sqft)</Label>
+              <Input
+                id="area"
+                type="number"
+                value={formData.area}
+                onChange={(e) => updateField("area", e.target.value)}
+                placeholder="1200"
+              />
+            </div>
           </div>
 
           {/* Description */}
@@ -1120,21 +1151,46 @@ if (!formData.contactPhone.trim()) {
             />
 
             <div className="flex flex-wrap gap-2 mt-2">
+              {/* Existing Images */}
               {existingImages.map((url, idx) => (
-                <img
-                  key={idx}
-                  src={url}
-                  alt={`existing-${idx}`}
-                  className="h-24 w-24 object-cover rounded"
-                />
+                <div key={idx} className="relative">
+                  <img
+                    src={url}
+                    alt={`existing-${idx}`}
+                    className="h-24 w-24 object-cover rounded"
+                  />
+                  <button
+                    type="button"
+                    className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                    onClick={() => {
+                      setExistingImages((prev) =>
+                        prev.filter((_, i) => i !== idx)
+                      );
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
               ))}
+
+              {/* Newly Selected Images */}
               {images.map((file, idx) => (
-                <img
-                  key={idx}
-                  src={URL.createObjectURL(file)}
-                  alt={file.name}
-                  className="h-24 w-24 object-cover rounded"
-                />
+                <div key={idx} className="relative">
+                  <img
+                    src={URL.createObjectURL(file)}
+                    alt={file.name}
+                    className="h-24 w-24 object-cover rounded"
+                  />
+                  <button
+                    type="button"
+                    className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                    onClick={() => {
+                      setImages((prev) => prev.filter((_, i) => i !== idx));
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
               ))}
             </div>
           </div>

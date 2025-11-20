@@ -519,13 +519,28 @@ const [totalRows, setTotalRows] = useState(0); // total rows for "All" tab
         return;
       }
 
+        const { data: userProfile, error: profileError } = await supabase
+      .from("users")
+      .select("company_id")
+      .eq("id", userId)
+      .single();
+
+    if (profileError || !userProfile) {
+      console.error("User profile not found", profileError);
+      setEnquiries([]);
+      setLoading(false);
+      return;
+    }
+
+    const companyId = userProfile.company_id;
+
       const from = (page - 1) * pageSize;
       const to = from + pageSize - 1;
 
       const { data, count, error } = await supabase
         .from("enquiries")
         .select("*", { count: "exact" }) // needed for total rows
-        .eq("user_id", userId)
+        .eq("company_id", companyId)
         .order("date", { ascending: false })
         .range(from, to);
 

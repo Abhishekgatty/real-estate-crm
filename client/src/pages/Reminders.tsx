@@ -270,6 +270,20 @@ const handleAddReminder = async (e: React.FormEvent) => {
   }
   const userId = user.id;
 
+         const { data: userProfile, error: profileError } = await supabase
+  .from("users")
+  .select("company_id")
+  .eq("id", user.id)
+  .single();
+
+if (profileError || !userProfile) {
+  console.error("User profile not found", profileError);
+  alert("❌ User profile not found. Please contact support.");
+  return;
+}
+
+const companyId = userProfile.company_id;
+
   if (editingReminder) {
     // ----- UPDATE EXISTING REMINDER -----
     const { error } = await supabase
@@ -302,6 +316,7 @@ const handleAddReminder = async (e: React.FormEvent) => {
       .from("reminders")
       .insert({
         title: formData.title,
+         company_id: companyId, 
         client_name: formData.clientName,
         date: formData.date,
         time: formData.time,
@@ -315,6 +330,21 @@ const handleAddReminder = async (e: React.FormEvent) => {
       console.error("Error adding reminder:", error.message);
       alert("Failed to add reminder.");
     } else if (data && data.length > 0) {
+
+        const newReminder = data[0];
+
+  // ⭐ ADD NOTIFICATION
+  await supabase.from("activity_feed").insert([
+    {
+      user_id: userId,
+      company_id: companyId,
+      action_type: "reminder",
+      title: `Reminder Added`,
+      description: `Reminder for ${formData.clientName} on ${formData.date} at ${formData.time}`,
+      related_id: newReminder.id,
+      created_at: new Date().toISOString(),
+    }
+  ]);
       setReminders(prev => [...prev, data[0]]);
       setShowAddForm(false);
       setFormData({ title: "", clientName: "", date: "", time: "", notes: "" });
@@ -336,13 +366,31 @@ const fetchReminders = async () => {
       return;
     }
 
+    
+
     const userId = user.id;
+
+      const { data: userProfile, error: profileError } = await supabase
+      .from("users")
+      .select("company_id")
+      .eq("id", userId)
+      .single();
+
+    if (profileError || !userProfile) {
+      console.error("User profile not found", profileError);
+      setReminders([]);
+      setLoading(false);
+      return;
+    }
+
+    const companyId = userProfile.company_id;
+    console.log("Logged-in user's company_id:", companyId);
 
     // Fetch reminders
     const { data, error } = await supabase
       .from("reminders")
       .select("*")
-      .eq("user_id", userId)
+      .eq("company_id", companyId)
       .order("date", { ascending: true });
 
     if (error) {

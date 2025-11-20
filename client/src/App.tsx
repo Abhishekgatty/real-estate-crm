@@ -319,73 +319,121 @@ function Router() {
 // }
 
 
-import { useState } from "react";
+
+
+
+import { useState} from "react";
+
 import Sidebar from "./pages/Sidebar";
 
 import { supabase } from "@/supabaseClient";
 
-
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(true);
-  const [notificationCount, setNotificationCount] = useState(0);
-  const [notifications, setNotifications] = useState<any[]>([]);
-  const [userId, setUserId] = useState<string | null>(null);
 
-  // Get current user
+  const [userId, setUserId] = useState<string | null>(null);
+  const [companyId, setCompanyId] = useState<string | null>(null);
+const [showAll, setShowAll] = useState(false); // false = show only unread
+
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notificationCount, setNotificationCount] = useState(0);
+
+  // Get current user and company
   useEffect(() => {
     const getUser = async () => {
       const { data: userData } = await supabase.auth.getUser();
       if (userData?.user?.id) {
         setUserId(userData.user.id);
+
+        // Fetch company_id for this user
+        const { data: userProfile, error } = await supabase
+          .from("users")
+          .select("company_id")
+          .eq("id", userData.user.id)
+          .single();
+
+        if (error) {
+          console.error("Error fetching company_id:", error.message);
+          return;
+        }
+        setCompanyId(userProfile?.company_id || null);
       }
     };
     getUser();
   }, []);
 
-  // Fetch unread notifications
-  const fetchNotifications = async () => {
-    if (!userId) return;
+  
 
-    const { data, error } = await supabase
-      .from("notifications")
-      .select("*", { count: "exact" })
-      .eq("user_id", userId)
-      .eq("read", false)
+  const fetchNotifications = async () => {
+  if (!userId || !companyId) return;
+
+  try {
+    // 1️⃣ Get all activity IDs the user has already read
+    const { data: readData, error: readError } = await supabase
+      .from("activity_read_status")
+      .select("activity_id")
+      .eq("user_id", userId);
+
+    if (readError) throw readError;
+
+    const readIds = readData?.map(r => r.activity_id) || [];
+
+    // 2️⃣ Fetch unread activities for this company
+    let query = supabase
+      .from("activity_feed")
+      .select("*")
+      .eq("company_id", companyId)
       .order("created_at", { ascending: false });
 
-    if (!error && data) {
-      setNotifications(data);
-      setNotificationCount(data.length);
-    }
-  };
+    // Exclude read activities
+   if (readIds.length > 0) {
+  query = query.not("id", "in", `(${readIds.join(",")})`);
+}
 
-  useEffect(() => {
-    fetchNotifications();
-  }, [userId]);
 
-  // Mark notification as read
-const markAsRead = async (id: string) => {
-  console.log("Marking notification as read:", id);
+    const { data, error } = await query;
+    if (error) throw error;
 
-  const { data, error } = await supabase
-    .from("notifications")
-    .update({ read: true }) // ✅ no quotes
-    .eq("id", id)
-    .select(); // get the updated row back
+    // 3️⃣ Update state
+    setNotifications(data || []);
+    setNotificationCount(data?.length || 0);
 
-  if (!error) {
-    console.log("Notification updated successfully:", data);
-
-    // Remove from local state immediately
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
-    setNotificationCount((prev) => Math.max(prev - 1, 0));
-  } else {
-    console.error("Failed to mark notification as read:", error.message);
+  } catch (err: any) {
+    console.error("Error fetching notifications:", err.message || err);
   }
 };
 
 
+
+
+
+  // Mark a notification as read for the current user
+  const markAsRead = async (activityId: string) => {
+    if (!userId) return;
+
+    try {
+      const { error } = await supabase
+        .from("activity_read_status")
+        .upsert(
+          { activity_id: activityId, user_id: userId },
+          { onConflict: "activity_id,user_id" }
+        );
+
+      if (error) throw error;
+
+      // Remove notification from UI
+      setNotifications(prev => prev.filter(n => n.id !== activityId));
+      setNotificationCount(prev => Math.max(prev - 1, 0));
+    } catch (err: any) {
+      console.error("Mark as read failed:", err.message || err);
+    }
+  };
+
+  // Fetch notifications whenever userId or companyId changes
+  useEffect(() => {
+    fetchNotifications();
+  }, [userId, companyId]);
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -397,11 +445,7 @@ const markAsRead = async (id: string) => {
             onClick={() => setSidebarOpen(false)}
             className="flex items-center gap-2 text-2xl font-bold text-primary hover:text-blue-700 transition"
           >
-            <img
-              src="/logo-round.png"
-              alt="Logo"
-              className="h-10 w-10 object-contain"
-            />
+            <img src="/logo-round.png" alt="Logo" className="h-10 w-10 object-contain" />
             <span>Real Estate CRM</span>
           </Link>
         }
@@ -413,12 +457,13 @@ const markAsRead = async (id: string) => {
 
       {/* Layout body */}
       <div className="flex flex-1 relative">
+        {/* Sidebar */}
         <div className="hidden md:block fixed top-[2px] left-0 h-[calc(100vh-64px)] z-30">
           <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
         </div>
-
         {sidebarOpen && <Sidebar isMobile onClose={() => setSidebarOpen(false)} />}
 
+        {/* Main content */}
         <main
           className={`flex-1 overflow-y-auto bg-gray-50 p-4 md:p-6 transition-all duration-300
             ${collapsed ? "md:ml-20" : "md:ml-64"}`}
@@ -432,6 +477,7 @@ const markAsRead = async (id: string) => {
     </div>
   );
 }
+
 
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";

@@ -225,23 +225,90 @@ export default function PropertyList({ onFiltered }: PropertyListProps) {
   const [propertyTypes, setPropertyTypes] = useState<string[]>([]);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
+
+
+
+
+
   // ---------- Fetch all properties ----------
-  useEffect(() => {
-    async function fetchProperties() {
-      const { data, error } = await supabase
+  // useEffect(() => {
+    
+  //   async function fetchProperties() {
+  //     const { data, error } = await supabase
+  //       .from("properties")
+  //       .select("*")
+  //       .order("created_at", { ascending: false });
+
+  //     if (!error && data) {
+  //       setProperties(data);
+  //       onFiltered(data); // send all properties initially
+  //     }
+  //   }
+  //   fetchProperties();
+  // }, []);
+
+
+ useEffect(() => {
+  async function fetchProperties() {
+    try {
+      // 1️⃣ Get logged-in user
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        console.error("User not found", userError);
+        return;
+      }
+
+      // 2️⃣ Fetch user's company_id from users table
+      const { data: userProfile, error: profileError } = await supabase
+        .from("users")
+        .select("company_id")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (profileError || !userProfile) {
+        console.error("User profile or company_id not found", profileError);
+        return;
+      }
+
+      const companyId = userProfile.company_id;
+
+      if (!companyId) {
+        console.error("No company linked to this user");
+        return;
+      }
+
+      // 3️⃣ Fetch properties for that company_id
+      const { data: propertiesData, error: propertiesError } = await supabase
         .from("properties")
         .select("*")
+        .eq("company_id", companyId)
         .order("created_at", { ascending: false });
 
-      if (!error && data) {
-        setProperties(data);
-        onFiltered(data); // send all properties initially
+      if (propertiesError) {
+        console.error("Error fetching properties:", propertiesError);
+        return;
       }
+
+      if (propertiesData) {
+        setProperties(propertiesData);
+        onFiltered(propertiesData);
+      }
+    } catch (err) {
+      console.error("Unexpected error fetching properties:", err);
     }
-    fetchProperties();
-  }, []);
+  }
+
+  fetchProperties();
+}, []);
+
+
 
   // ---------- Fetch distinct filter options ----------
+  
   useEffect(() => {
     async function fetchDistinct(column: string) {
       const { data, error } = await supabase

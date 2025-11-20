@@ -452,31 +452,48 @@ export default function Properties() {
     onDelete: handleDelete, // ✅ Add this
   });
 
-  const handleView = async (id: string) => {
-    console.log("handleView called with ID:", id);
+  // const handleView = async (id: string) => {
+  //   console.log("handleView called with ID:", id);
 
-    if (!id) {
-      console.warn("No ID provided to handleView!");
-      return;
-    }
+  //   if (!id) {
+  //     console.warn("No ID provided to handleView!");
+  //     return;
+  //   }
 
-    const { data, error } = await supabase
-      .from("properties")
-      .select("*")
-      .eq("id", id)
-      .single();
+  //   const { data, error } = await supabase
+  //     .from("properties")
+  //     .select("*")
+  //     .eq("id", id)
+  //     .single();
 
-    console.log("Supabase response:", { data, error });
+  //   console.log("Supabase response:", { data, error });
 
-    if (error) {
-      console.error("Error fetching property:", error);
-      return;
-    }
+  //   if (error) {
+  //     console.error("Error fetching property:", error);
+  //     return;
+  //   }
 
-    console.log("Property fetched successfully:", data);
-    setViewProperty(data); // store the property details
-    setShowViewModal(true); // open the modal
-  };
+  //   console.log("Property fetched successfully:", data);
+  //   setViewProperty(data); // store the property details
+  //   setShowViewModal(true); // open the modal
+  // };
+
+  async function checkMyCompany(userId: string) {
+  const { data, error } = await supabase
+    .from("companies")
+    .select("*")
+    .eq("id", userId)  // fetch company with specific id
+    .maybeSingle();
+
+  console.log("========== MY COMPANY ==========");
+  if (error) {
+    console.error("❌ ERROR FETCHING COMPANY:", error);
+  } else {
+    console.log("✅ COMPANY DATA:", data);
+  }
+  console.log("================================");
+}
+
 
   return (
     <div className="space-y-6">

@@ -363,8 +363,6 @@
 // }
 
 
-
-
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -398,22 +396,40 @@ export default function EnquiryForm({
     selling_rate: "",
     remarks: "",
     property_id: "",
+    
   });
 
   useEffect(() => {
     const fetchProducts = async () => {
-      console.log("⏳ Fetching products...");
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+      if (userError || !user) return console.error(userError);
 
-      const { data, error } = await supabase.from("properties").select("*");
+      const userId = user.id;
 
-      console.log("Products Response:", data);
-      console.log("Products Error:", error);
+      const { data: userProfile, error: profileError } = await supabase
+        .from("users")
+        .select("company_id")
+        .eq("id", userId)
+        .single();
 
-      if (error) {
-        console.error("❌ Error fetching products:", error);
-      } else {
-        setProducts(data || []);
-      }
+      if (profileError || !userProfile) return console.error(profileError);
+
+      const companyId = userProfile.company_id;
+      console.log("Logged-in user's company_id:", companyId);
+
+      const { data: properties, error } = await supabase
+        .from("properties")
+        .select("*")
+        .eq("company_id", companyId) // match company
+        .neq("user_id", userId); // exclude current user
+
+      console.log("Properties for company excluding current user:", properties);
+      if (error) console.error(error);
+
+      setProducts(properties || []);
     };
 
     fetchProducts();
@@ -446,15 +462,34 @@ export default function EnquiryForm({
     e.preventDefault();
 
     try {
+      // 1️⃣ Get logged-in user
       const { data: userData } = await supabase.auth.getUser();
       const userId = userData?.user?.id;
-      console.log("user iddddd", userId);
+
+      console.log("USER ID:", userId);
 
       if (!userId) {
         alert("Please log in.");
         return;
       }
 
+      // 2️⃣ Get company_id where created_by = userId
+      const { data: userProfile, error: profileError } = await supabase
+        .from("users")
+        .select("company_id")
+        .eq("id", userId)
+        .single();
+
+      if (profileError || !userProfile) {
+        console.error("User profile not found", profileError);
+        alert("❌ User profile not found. Please contact support.");
+        return;
+      }
+
+      const companyId = userProfile.company_id;
+      console.log("COMPANY ID:", companyId);
+
+      // 3️⃣ UPDATE ENQUIRY
       if (defaultValues?.id) {
         const { error } = await supabase
           .from("enquiries")
@@ -471,7 +506,7 @@ export default function EnquiryForm({
             remarks: formData.remarks || null,
             updated_at: new Date().toISOString(),
           })
-          .eq("id", defaultValues.id) // match enquiry
+          .eq("id", defaultValues.id)
           .eq("user_id", userId);
 
         if (error) {
@@ -481,11 +516,17 @@ export default function EnquiryForm({
           alert("Enquiry updated successfully!");
           onSubmit({ ...formData, id: defaultValues.id });
         }
-      } else {
-        // ✅ Create new enquiry
-        const { error } = await supabase.from("enquiries").insert([
+
+        return;
+      }
+
+      // 4️⃣ CREATE NEW ENQUIRY
+     const { data: newEnquiry, error } = await supabase
+        .from("enquiries")
+        .insert([
           {
             user_id: userId,
+            company_id: companyId, // REQUIRED FIELD
             listing_type: enquiryType,
             date: formData.date,
             name: formData.name,
@@ -496,37 +537,43 @@ export default function EnquiryForm({
             referred_by: formData.referred_by,
             mobile_number: formData.mobile_number,
             location: formData.location,
-
             remarks: formData.remarks || null,
             created_at: new Date().toISOString(),
           },
-        ]);
+        ])
+        .select() // fetch inserted row
+        .single();
 
-    if (error) {
-  console.error("Error creating enquiry:", error.message);
-  alert("Failed to create enquiry");
-} else {
-  // ✅ Create a notification
-  if (userId) {
-    await supabase.from("notifications").insert([
-      {
-        user_id: userId, // or assign to admin/agent
-        message: `New enquiry from ${formData.name}`,
-        type: "enquiry",
-        read: false,
-        created_at: new Date().toISOString(),
-      },
-    ]);
-  }
-
-  alert("Enquiry created successfully!");
-  onSubmit(formData);
-}
-
+      if (error) {
+        console.error("Error creating enquiry:", error.message);
+        alert("Failed to create enquiry");
+        return;
       }
+const description =
+  enquiryType === "buy"
+    ? `Enquiry details: Buy | Budget: ${formData.budget || "N/A"}`
+    : `Enquiry details: Sell | Selling Rate: ${
+        formData.selling_rate || "N/A"
+      }`;
+
+     
+      await supabase.from("activity_feed").insert([
+        {
+          user_id: userId,
+          company_id: companyId,
+          action_type: "enquiry", // Type of activity
+          title: `New Enquiry from ${formData.name}`,
+          description: description,
+          related_id: newEnquiry.id, // optionally link to enquiry id
+          created_at: new Date().toISOString(),
+        },
+      ]);
+
+      alert("Enquiry created successfully!");
+      onSubmit(formData);
     } catch (err) {
       console.error(err);
-      alert("Something went wrong");
+      alert("Something went wrong.");
     }
   };
 

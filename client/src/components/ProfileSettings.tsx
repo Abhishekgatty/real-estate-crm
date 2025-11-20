@@ -1043,11 +1043,23 @@ export default function ProfileSettings({ onLogout }: ProfileSettingsProps) {
           <Button onClick={handleSaveProfile} className="w-full">
             Save Changes
           </Button>
+
+          <Button
+  variant="destructive"
+  onClick={async () => {
+    await supabase.auth.signOut();
+    window.location.href = "/login";
+  }}
+  className="w-full"
+>
+  <LogOut className="h-4 w-4 mr-2" />
+  Logout
+</Button>
         </CardContent>
       </Card>
 
       {/* Notifications */}
-      <Card>
+      {/* <Card>
         <CardHeader>
           <CardTitle>Notification Preferences</CardTitle>
           <CardDescription>Choose how you want to receive notifications</CardDescription>
@@ -1073,20 +1085,10 @@ export default function ProfileSettings({ onLogout }: ProfileSettingsProps) {
             </div>
           ))}
         </CardContent>
-      </Card>
+      </Card> */}
 
       {/* Logout */}
-<Button
-  variant="destructive"
-  onClick={async () => {
-    await supabase.auth.signOut();
-    window.location.href = "/login";
-  }}
-  className="w-full"
->
-  <LogOut className="h-4 w-4 mr-2" />
-  Logout
-</Button>
+
 
 
     </div>
