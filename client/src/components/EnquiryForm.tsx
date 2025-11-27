@@ -385,6 +385,7 @@ export default function EnquiryForm({
 }: EnquiryFormProps) {
   const [enquiryType, setEnquiryType] = useState<"buy" | "sell">("buy");
   const [products, setProducts] = useState<any[]>([]);
+  const [statusOptions, setStatusOptions] = useState<any[]>([]); 
 
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split("T")[0],
@@ -396,8 +397,28 @@ export default function EnquiryForm({
     selling_rate: "",
     remarks: "",
     property_id: "",
-    
+    status_id: "" 
   });
+
+  useEffect(() => {
+  const fetchStatus = async () => {
+    const { data: statusList, error } = await supabase
+      .from("enquiry_status")
+      .select("*")
+      .order("id", { ascending: true });
+
+    if (error) {
+      console.error("Error fetching enquiry status:", error);
+      return;
+    }
+
+    setStatusOptions(statusList || []);
+  };
+
+  fetchStatus();
+}, []);
+
+  
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -424,7 +445,7 @@ export default function EnquiryForm({
         .from("properties")
         .select("*")
         .eq("company_id", companyId) // match company
-        .neq("user_id", userId); // exclude current user
+        // .neq("user_id", userId); // exclude current user
 
       console.log("Properties for company excluding current user:", properties);
       if (error) console.error(error);
@@ -450,6 +471,7 @@ export default function EnquiryForm({
         budget: defaultValues.budget || "",
         selling_rate: defaultValues.selling_rate || "",
         remarks: defaultValues.remarks || "",
+         status_id: defaultValues.status_id || ""
       });
     }
   }, [defaultValues]);
@@ -504,6 +526,7 @@ export default function EnquiryForm({
             location: formData.location,
             selling_rate: formData.selling_rate || null,
             remarks: formData.remarks || null,
+            status_id: formData.status_id,
             updated_at: new Date().toISOString(),
           })
           .eq("id", defaultValues.id)
@@ -537,6 +560,7 @@ export default function EnquiryForm({
             referred_by: formData.referred_by,
             mobile_number: formData.mobile_number,
             location: formData.location,
+             status_id: formData.status_id,
             remarks: formData.remarks || null,
             created_at: new Date().toISOString(),
           },
@@ -633,6 +657,28 @@ const description =
                 ))}
               </select>
             </div>
+
+<div className="space-y-2">
+  <Label htmlFor="status">Status *</Label>
+  <select
+    id="status"
+    value={formData.status_id}
+    onChange={(e) => updateField("status_id", e.target.value)}
+    required
+    className="border rounded-md p-2 w-full md:w-96"
+  >
+    <option value="">Select Status</option>
+    {statusOptions.map((s) => (
+      <option key={s.id} value={s.id}>
+        {s.status_name}
+      </option>
+    ))}
+  </select>
+</div>
+
+
+
+
 
             <div className="space-y-2">
               <Label htmlFor="referredBy">Referred By</Label>

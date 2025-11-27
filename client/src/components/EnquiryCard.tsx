@@ -414,6 +414,8 @@
 
 // src/components/EnquiryCard.tsx
 
+
+
 import { Button } from "@/components/ui/button";
 import { Phone, Pencil, Trash2 } from "lucide-react";
 import React, { useState, useEffect } from "react";
@@ -433,6 +435,7 @@ interface EnquiryCardProps {
   date?: string;
   referred_by?: string | null;
   remarks?: string | null;
+  status_name?: string | null;
   onEdit?: (id: string) => void;
   onDelete?: (id: string) => void;
   onCall?: (mobile: string) => void;
@@ -450,6 +453,7 @@ export default function EnquiryCard({
   selling_rate,
   date,
   referred_by,
+  status_name,
   onEdit,
   onDelete,
   onCall,
@@ -480,22 +484,24 @@ export default function EnquiryCard({
   return (
     <div className="grid grid-cols-12 gap-2 items-center py-3 border-b text-sm hover:bg-gray-50 transition">
       {/* Name */}
-      <div className="col-span-1 px-2">
-        <div className="truncate font-medium whitespace-nowrap">
-          {name || "-"}
-        </div>
-      </div>
+     
+        <div className="col-span-1 px-2 overflow-x-auto scrollbar-hide">
+  <div className="whitespace-nowrap">{name || "-"}</div>
+</div>
+
+
+ 
 
       {/* Listing */}
-      <div className="col-span-1 px-2">
-        <div className="truncate uppercase whitespace-nowrap">
+       <div className="col-span-1 px-2 overflow-x-auto scrollbar-hide">
+         <div className="whitespace-nowrap">
           {(listing_type || "-").toString()}
         </div>
       </div>
 
       {/* Property */}
-      <div className="col-span-2 px-2">
-        <div className="truncate whitespace-nowrap">
+       <div className="col-span-2 px-2 overflow-x-auto scrollbar-hide">
+        <div className="whitespace-nowrap">
           {propertyTitle ?? property_name ?? property_id ?? "-"}
         </div>
       </div>
@@ -514,34 +520,38 @@ export default function EnquiryCard({
         </div>
       </div> */}
 
-      <div className="col-span-2 px-2">
-        <div className="truncate text-left whitespace-nowrap">
+      <div className="col-span-1 px-2 overflow-x-auto scrollbar-hide">
+       <div className="whitespace-nowrap">
           {mobile_number || "-"}
         </div>
       </div>
 
       {/* Location */}
-      <div className="col-span-2 px-2">
-        <div className="truncate whitespace-nowrap">{location || "-"}</div>
+      <div className="col-span-2 px-2 overflow-x-auto scrollbar-hide">
+       <div className="whitespace-nowrap">{location || "-"}</div>
       </div>
 
       {/* Budget */}
-      <div className="col-span-1 px-2">
-        <div className="truncate whitespace-nowrap">
+      <div className="col-span-1 px-2 overflow-x-auto scrollbar-hide">
+       <div className="whitespace-nowrap">
           {budget ?? selling_rate ?? "-"}
         </div>
       </div>
 
       {/* Date */}
-      <div className="col-span-1 px-2">
-        <div className="truncate whitespace-nowrap">
+       <div className="col-span-1 px-2 overflow-x-auto scrollbar-hide">
+        <div className="whitespace-nowrap">
           {date ? date.split("T")[0] : "-"}
         </div>
       </div>
 
       {/* Referred */}
-      <div className="col-span-1 px-2">
-        <div className="truncate whitespace-nowrap">{referred_by || "-"}</div>
+      <div className="col-span-1 px-2 overflow-x-auto scrollbar-hide">
+          <div className="whitespace-nowrap">{referred_by || "-"}</div>
+      </div>
+      {/* Status */}
+      <div className="col-span-1 px-2 overflow-x-auto scrollbar-hide">
+        <div className="whitespace-nowrap">{status_name || "-"}</div>
       </div>
 
       {/* Actions */}

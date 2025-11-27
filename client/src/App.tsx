@@ -185,11 +185,11 @@ function Router() {
           <Reminders />
         </AppLayout>
       </Route>
-      <Route path="/reports">
+      {/* <Route path="/reports">
         <AppLayout>
           <Reports />
         </AppLayout>
-      </Route>
+      </Route> */}
       <Route path="/settings">
         <AppLayout>
           <Settings />
@@ -197,6 +197,42 @@ function Router() {
       </Route>
       <Route path="/auth/callback" component={AuthCallbackPage} />
       <Route path="/reset-password" component={ResetPassword} />
+       <Route path="/z" component={UsersReport} />
+     {/* Reports Dashboard */}
+<Route path="/reports">
+  <AppLayout>
+    <ReportsDashboard />
+  </AppLayout>
+</Route>
+
+{/* Pending Followups */}
+<Route path="/reports/pending-followups">
+  <AppLayout>
+    <PendingFollowups />
+  </AppLayout>
+</Route>
+
+{/* Total Converted */}
+<Route path="/reports/converted">
+  <AppLayout>
+    <TotalConverted />
+  </AppLayout>
+</Route>
+
+{/* Lost Leads */}
+<Route path="/reports/lost-leads">
+  <AppLayout>
+    <LostLeads />
+  </AppLayout>
+</Route>
+
+{/* Leads by Location */}
+<Route path="/reports/leads-by-location">
+  <AppLayout>
+    <LeadsByLocation />
+  </AppLayout>
+</Route>
+
       <Route path="/properties/view/:id">
         <AppLayout>
           <ViewPropertyPage />
@@ -482,6 +518,12 @@ const [showAll, setShowAll] = useState(false); // false = show only unread
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import ResetPassword from "./pages/ResetPassword";
+import UsersReport from "./pages/UsersReport";
+import PendingFollowups from "./pages/Reports/PendingFollowups";
+import TotalConverted from "./pages/Reports/TotalConverted";
+import LostLeads from "./pages/Reports/LostLeads";
+import LeadsByLocation from "./pages/Reports/LeadsByLocation";
+import ReportsDashboard from "./pages/Reports/ReportsDashboard";
 
 export default function App() {
   useEffect(() => {

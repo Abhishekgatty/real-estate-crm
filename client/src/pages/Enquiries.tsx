@@ -489,6 +489,7 @@ interface Enquiry {
   referred_by?: string;
   remarks?: string;
    property_id?: string;
+    status_name?: string;
 }
 
 export default function Enquiries() {
@@ -507,19 +508,70 @@ const [pageSize] = useState(6); // rows per page, changed from 10 to 5
 const [totalRows, setTotalRows] = useState(0); // total rows for "All" tab
 
   // ---- Fetch Enquiries with pagination (Changed) ----
+  // const fetchEnquiries = async () => {
+  //   setLoading(true);
+  //   try {
+  //     const { data: userData } = await supabase.auth.getUser();
+  //     const userId = userData?.user?.id;
+
+  //     if (!userId) {
+  //       setEnquiries([]);
+  //       setLoading(false);
+  //       return;
+  //     }
+
+  //       const { data: userProfile, error: profileError } = await supabase
+  //     .from("users")
+  //     .select("company_id")
+  //     .eq("id", userId)
+  //     .single();
+
+  //   if (profileError || !userProfile) {
+  //     console.error("User profile not found", profileError);
+  //     setEnquiries([]);
+  //     setLoading(false);
+  //     return;
+  //   }
+
+  //   const companyId = userProfile.company_id;
+
+  //     const from = (page - 1) * pageSize;
+  //     const to = from + pageSize - 1;
+
+  //     const { data, count, error } = await supabase
+  //       .from("enquiries")
+  //       .select("*", { count: "exact" }) // needed for total rows
+  //       .eq("company_id", companyId)
+  //       .order("date", { ascending: false })
+  //       .range(from, to);
+
+  //     if (error) {
+  //       console.error("Error fetching enquiries:", error.message);
+  //     } else if (data) {
+  //       setEnquiries(data as Enquiry[]);
+  //       setTotalRows(count || 0);
+  //     }
+  //   } catch (err) {
+  //     console.error(err);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
   const fetchEnquiries = async () => {
-    setLoading(true);
-    try {
-      const { data: userData } = await supabase.auth.getUser();
-      const userId = userData?.user?.id;
+  setLoading(true);
+  try {
+    // 1️⃣ Get logged-in user
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData?.user?.id;
+    if (!userId) {
+      setEnquiries([]);
+      setLoading(false);
+      return;
+    }
 
-      if (!userId) {
-        setEnquiries([]);
-        setLoading(false);
-        return;
-      }
-
-        const { data: userProfile, error: profileError } = await supabase
+    // 2️⃣ Get company_id
+    const { data: userProfile, error: profileError } = await supabase
       .from("users")
       .select("company_id")
       .eq("id", userId)
@@ -534,28 +586,40 @@ const [totalRows, setTotalRows] = useState(0); // total rows for "All" tab
 
     const companyId = userProfile.company_id;
 
-      const from = (page - 1) * pageSize;
-      const to = from + pageSize - 1;
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
 
-      const { data, count, error } = await supabase
-        .from("enquiries")
-        .select("*", { count: "exact" }) // needed for total rows
-        .eq("company_id", companyId)
-        .order("date", { ascending: false })
-        .range(from, to);
+    // 3️⃣ Fetch enquiries with status_name via foreign key
+    const { data, count, error } = await supabase
+      .from("enquiries")
+      .select(`
+        *,
+        enquiry_status:status_id(status_name)
+      `, { count: "exact" })  // status_id is FK
+      .eq("company_id", companyId)
+      .order("date", { ascending: false })
+      .range(from, to);
 
-      if (error) {
-        console.error("Error fetching enquiries:", error.message);
-      } else if (data) {
-        setEnquiries(data as Enquiry[]);
-        setTotalRows(count || 0);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
+    if (error) {
+      console.error("Error fetching enquiries:", error.message);
+      setEnquiries([]);
+    } else if (data) {
+      // Map status_name directly for easier rendering
+      const enriched = (data as any[]).map((e) => ({
+        ...e,
+        status_name: e.enquiry_status?.status_name || "-",
+      }));
+
+      setEnquiries(enriched);
+      setTotalRows(count || 0);
     }
-  };
+  } catch (err) {
+    console.error(err);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   useEffect(() => {
     fetchEnquiries();
@@ -656,19 +720,21 @@ const [totalRows, setTotalRows] = useState(0); // total rows for "All" tab
     sellPage * pageSize
   );
 
-  const HeaderRow = () => (
-    <div className="grid grid-cols-12 gap-2 items-center py-3 font-semibold text-white bg-primary border-b border-gray-300 text-sm">
-      <div className="col-span-1 px-2">Name</div>
-      <div className="col-span-1 px-2">Type</div>
-      <div className="col-span-2 px-2">Property</div>
-      <div className="col-span-2 px-2">Mobile</div>
-      <div className="col-span-2 px-2">Location</div>
-      <div className="col-span-1 px-2">Budget</div>
-      <div className="col-span-1 px-2">Date</div>
-      <div className="col-span-1 px-2">Referred</div>
-      <div className="col-span-1 px-2 text-right">Actions</div>
-    </div>
-  );
+const HeaderRow = () => (
+  <div className="grid grid-cols-12 gap-2 items-center py-3 font-semibold text-white bg-primary border-b border-gray-300 text-sm">
+    <div className="col-span-1 px-2">Name</div>
+    <div className="col-span-1 px-2">Type</div>
+    <div className="col-span-2 px-2">Property</div>
+    <div className="col-span-1 px-2">Mobile</div>
+    <div className="col-span-2 px-2">Location</div>
+    <div className="col-span-1 px-2">Budget</div>
+    <div className="col-span-1 px-2">Date</div>
+    <div className="col-span-1 px-2">Referred</div>
+    <div className="col-span-1 px-2">Status</div>  {/* ✅ New Status column */}
+    <div className="col-span-1 px-2 text-right">Actions</div>
+  </div>
+);
+
 
   return (
     <div className="space-y-6">

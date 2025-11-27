@@ -228,8 +228,10 @@ const Sidebar = ({ onClose, isMobile = false }: SidebarProps) => {
               { to: "/properties", icon: Home, label: "Properties" },
               { to: "/enquiries", icon: MessageSquare, label: "Enquiries" },
               { to: "/reminders", icon: MessageSquare, label: "Reminders" },
-              // { to: "/reports", icon: BarChart3, label: "Reports" },
               { to: "/settings", icon: Settings, label: "Settings" },
+             { to: "/reports", icon: BarChart3, label: "Reports" },
+
+
             ].map(({ to, icon: Icon, label }) => (
               <Link
                 key={to}
