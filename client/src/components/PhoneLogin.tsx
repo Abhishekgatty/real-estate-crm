@@ -761,7 +761,7 @@
 // }
 
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -784,6 +784,10 @@ export default function AuthForm() {
   const [companyCode, setCompanyCode] = useState("");
   const [age, setAge] = useState("");
 
+  useEffect(() => {
+    console.log("hiiii")
+   }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !password.trim()) {
@@ -799,6 +803,10 @@ export default function AuthForm() {
         if (!companyCode.trim()) return toast.error("Enter company code");
 
         const formattedCode = companyCode.trim().toUpperCase();
+
+          if (companyCode.trim().length < 3) {
+      return toast.error("Company code must be at least 3 characters");
+    }
 
         // -----------------------------
         // STEP 1: REGISTER USER
