@@ -727,7 +727,7 @@ const HeaderRow = () => (
     <div className="col-span-2 px-2">Property</div>
     <div className="col-span-1 px-2">Mobile</div>
     <div className="col-span-2 px-2">Location</div>
-    <div className="col-span-1 px-2">Budget</div>
+    <div className="col-span-1 px-2">Amount</div>
     <div className="col-span-1 px-2">Date</div>
     <div className="col-span-1 px-2">Referred</div>
     <div className="col-span-1 px-2">Status</div>  {/* ✅ New Status column */}

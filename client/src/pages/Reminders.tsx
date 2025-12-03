@@ -218,6 +218,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus } from "lucide-react";
 import { supabase } from "../supabaseClient";
+import toast, { Toaster } from "react-hot-toast";
 
 interface Reminder {
   id: string;
@@ -463,10 +464,39 @@ const handleComplete = async (id: string) => {
 
   setUpdatingId(null);
 };
+  useEffect(() => {
+    const audio = new Audio("/notification.mp3"); // your alert sound
+    const notifiedReminders = new Set<string>();
 
+    const checkReminders = () => {
+      const now = new Date();
+      const nowTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+      const today = now.toISOString().split("T")[0];
 
+      reminders.forEach(reminder => {
+        if (reminder.date === today && reminder.time === nowTime && reminder.status === "pending" && !notifiedReminders.has(reminder.id)) {
+          // Play audio
+          audio.play().catch(err => console.error(err));
 
+          // In-app toast
+          toast(`Reminder: ${reminder.title} - Client: ${reminder.clientName}`);
 
+          // Browser notification if allowed
+          if (Notification.permission === "granted") {
+            new Notification(`Reminder: ${reminder.title}`, {
+              body: `Client: ${reminder.clientName}\nTime: ${reminder.time}`,
+              icon: "/notification-icon.png"
+            });
+          }
+
+          notifiedReminders.add(reminder.id);
+        }
+      });
+    };
+
+    const interval = setInterval(checkReminders, 60000);
+    return () => clearInterval(interval);
+  }, [reminders]);
 
 
   return (

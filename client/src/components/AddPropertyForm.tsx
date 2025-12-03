@@ -679,6 +679,9 @@
 //   );
 // }
 
+
+
+
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -710,6 +713,7 @@ interface Property {
   description: string;
   contact_name: string;
   contact_phone: string;
+  rent_type: string;
   images: string[];
 }
 
@@ -728,8 +732,18 @@ export default function AddPropertyForm({
   const [images, setImages] = useState<File[]>([]);
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [propertyCategory, setPropertyCategory] = useState("");
+  const [residentialCategories, setResidentialCategories] = useState<string[]>(
+    []
+  );
+  const [commercialCategories, setCommercialCategories] = useState<string[]>(
+    []
+  );
   const [options, setOptions] = useState<{ id: string; name: string }[]>([]);
   const [propertyTypeOptions, setPropertyTypeOptions] = useState<
+    { id: string; name: string }[]
+  >([]);
+  const [rentTypeOptions, setRentTypeOptions] = useState<
     { id: string; name: string }[]
   >([]);
 
@@ -744,7 +758,8 @@ export default function AddPropertyForm({
     description: "",
     contactName: "",
     contactPhone: "",
-    listingType: "sell",
+    listingType: "sale",
+    rentType: "",
   });
 
   // Populate form if editing
@@ -761,7 +776,8 @@ export default function AddPropertyForm({
         description: property.description || "",
         contactName: property.contact_name || "",
         contactPhone: property.contact_phone || "",
-        listingType: property.listing_type || "sell",
+        listingType: property.listing_type || "sale",
+        rentType: property.rent_type || "",
       });
       setExistingImages(property.images || []);
     }
@@ -789,10 +805,82 @@ export default function AddPropertyForm({
   useEffect(() => {
     async function fetchListingTypes() {
       const { data, error } = await supabase.from("listing_types").select("*");
-      if (!error) setOptions(data || []);
+      if (error) {
+        console.error("Error fetching listing types:", error);
+      } else {
+        console.log("Fetched Listing Types:", data);
+        setOptions(data || []);
+      }
     }
     fetchListingTypes();
   }, []);
+
+  useEffect(() => {
+    async function fetchRentTypes() {
+      const { data, error } = await supabase.from("rent_types").select("*");
+      if (!error) {
+        console.log("Fetched Rent Types:", data); // <-- debug output
+        setRentTypeOptions(data || []);
+      } else {
+        console.error("Error fetching Rent Types:", error);
+      }
+    }
+    fetchRentTypes();
+  }, []);
+
+  useEffect(() => {
+    async function fetchCategories() {
+      try {
+        // Fetch Residential Categories
+        const { data: resData, error: resError } = await supabase
+          .from("residential_categories")
+          .select("name")
+          .order("id", { ascending: true });
+
+        if (resError) throw resError;
+        setResidentialCategories(resData?.map((item) => item.name) || []);
+
+        // Fetch Commercial Categories
+        const { data: comData, error: comError } = await supabase
+          .from("commercial_categories")
+          .select("name")
+          .order("id", { ascending: true });
+
+        if (comError) throw comError;
+        setCommercialCategories(comData?.map((item) => item.name) || []);
+      } catch (err) {
+        console.error("Error fetching categories:", err);
+      }
+    }
+
+    fetchCategories();
+  }, []);
+
+  const getCategoryOptions = () => {
+    const listingTypeValue = formData.listingType?.toLowerCase();
+    const rentTypeValue = formData.rentType?.toLowerCase();
+
+   
+    if (listingTypeValue === "for rent") {
+      if (rentTypeValue === "residential") return residentialCategories;
+      if (rentTypeValue === "commercial") return commercialCategories;
+      return []; 
+    }
+
+    // For Buy or Sale, show all categories by default
+    if (listingTypeValue === "for buy") {
+      if (rentTypeValue === "residential") return residentialCategories;
+      if (rentTypeValue === "commercial") return commercialCategories;
+      return []; 
+    }
+    if (listingTypeValue === "for sale") {
+      if (rentTypeValue === "residential") return residentialCategories;
+      if (rentTypeValue === "commercial") return commercialCategories;
+      return [];
+    }
+
+    return [];
+  };
 
   useEffect(() => {
     async function fetchPropertyTypes() {
@@ -910,15 +998,17 @@ export default function AddPropertyForm({
           .update({
             listing_type: formData.listingType,
             title: formData.title,
+            property_categories: propertyCategory,
             location: formData.location,
             price: parseFloat(formData.price),
-            property_type: formData.propertyType,
+            property_type: formData.rentType,
             area_sqft: parseFloat(formData.area),
             bedrooms: parseInt(formData.bedrooms),
             bathrooms: parseInt(formData.bathrooms),
             description: formData.description,
             contact_name: formData.contactName,
             contact_phone: formData.contactPhone,
+            rent_type: formData.rentType,
             images: allImages,
             updated_at: new Date().toISOString(),
           })
@@ -932,26 +1022,30 @@ export default function AddPropertyForm({
         }
       } else {
         // Insert new property
-        const { error } = await supabase.from("properties").insert([
-          {
-            user_id: user.id,
-            company_id: companyId,
-            listing_type: formData.listingType,
-            title: formData.title,
-            location: formData.location,
-            price: parseFloat(formData.price),
-            property_type: formData.propertyType,
-            area_sqft: parseFloat(formData.area),
-            bedrooms: parseInt(formData.bedrooms),
-            bathrooms: parseInt(formData.bathrooms),
-            description: formData.description,
-            contact_name: formData.contactName,
-            contact_phone: formData.contactPhone,
-            images: allImages,
-            created_at: new Date().toISOString(),
-          },
-        ])
-        .select();
+        const { error } = await supabase
+          .from("properties")
+          .insert([
+            {
+              user_id: user.id,
+              company_id: companyId,
+              listing_type: formData.listingType,
+              title: formData.title,
+              location: formData.location,
+              price: parseFloat(formData.price),
+              property_type: formData.rentType,
+              area_sqft: parseFloat(formData.area),
+              bedrooms: parseInt(formData.bedrooms),
+              bathrooms: parseInt(formData.bathrooms),
+              description: formData.description,
+              contact_name: formData.contactName,
+              contact_phone: formData.contactPhone,
+              rent_type: formData.rentType,
+              images: allImages,
+              property_categories: propertyCategory,
+              created_at: new Date().toISOString(),
+            },
+          ])
+          .select();
 
         if (error) {
           alert("❌ Failed to add property: " + error.message);
@@ -981,7 +1075,8 @@ export default function AddPropertyForm({
             description: "",
             contactName: "",
             contactPhone: "",
-            listingType: "sell",
+            listingType: "sale",
+            rentType: "",
           });
           setExistingImages([]);
           setImages([]);
@@ -1004,7 +1099,6 @@ export default function AddPropertyForm({
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Listing Type */}
           <div className="space-y-2">
             <Label htmlFor="listingType">Listing Type *</Label>
             <Select
@@ -1012,17 +1106,63 @@ export default function AddPropertyForm({
               onValueChange={(value) => updateField("listingType", value)}
             >
               <SelectTrigger id="listingType">
-                <SelectValue />
+                <SelectValue placeholder="Select listing type" />
               </SelectTrigger>
               <SelectContent>
                 {options.map((option) => (
-                  <SelectItem key={option.id} value={option.name}>
+                 <SelectItem key={option.id} value={option.name.toLowerCase()}>
                     {option.name}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
+
+          {formData.listingType && (
+            <div className="space-y-2 mt-2">
+              <Label htmlFor="rentType">Property Type *</Label>
+              <Select
+                value={formData.rentType}
+                onValueChange={(value) => updateField("rentType", value)} // <-- this saves to formData.rentType
+              >
+                <SelectTrigger id="rentType">
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {rentTypeOptions.map((option) => (
+                    <SelectItem
+                      key={option.id}
+                      value={option.name.toLowerCase()}
+                    >
+                      {option.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Property Category - show only if Property Type / Rent Type is selected */}
+          {formData.rentType && (
+            <div className="space-y-2 mt-2">
+              <Label htmlFor="propertyCategory">Property Category *</Label>
+              <Select
+                value={propertyCategory}
+                onValueChange={(value) => setPropertyCategory(value)}
+              >
+                <SelectTrigger id="propertyCategory">
+                  <SelectValue placeholder="Select property category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {getCategoryOptions().map((cat, idx) => (
+                    <SelectItem key={idx} value={cat}>
+                      {cat}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* Title */}
           <div className="space-y-2">

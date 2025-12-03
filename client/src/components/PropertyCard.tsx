@@ -188,8 +188,6 @@
 //   );
 // }
 
-
-
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -206,11 +204,16 @@ interface PropertyCardProps {
   title: string;
   location: string;
   price: string;
-  type: "Buy" | "Sell";
+  type: "Buy" | "Sale" | "Rent";
   bedrooms?: number;
   bathrooms?: number;
   area?: string;
   mobile_number: string;
+  property_type?: string;
+  contact_name?: string; // ✅ Add this
+  contact_phone?: string;
+  property_categories?: string;
+  description?: string;
   onView: (id: string) => void;
   onContact: (id: string) => void;
   onEdit?: (id: string) => void;
@@ -227,7 +230,12 @@ export default function PropertyCard({
   type,
   bedrooms,
   bathrooms,
+  description,
+  property_type,
   mobile_number,
+  contact_name,
+  property_categories,
+  contact_phone,
   area,
   onView,
   onContact,
@@ -239,6 +247,7 @@ export default function PropertyCard({
 
   console.log("PropertyCard prop user_id:", user_id);
   console.log("PropertyCard Received Number:", mobile_number);
+  console.log("Badge Type Value:", type);
 
   useEffect(() => {
     const loadUser = async () => {
@@ -249,9 +258,9 @@ export default function PropertyCard({
   }, []);
 
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300 rounded-lg">
+    <Card className="hover:shadow-lg transition-shadow duration-300 rounded-lg relative">
       {/* Image Carousel */}
-      <div className="relative w-full h-64 bg-gray-100 rounded-t-lg overflow-hidden">
+      <div className="relative w-full h-64 bg-gray-100 rounded-t-lg">
         {images.length > 0 ? (
           <img
             src={images[currentIndex]}
@@ -304,15 +313,19 @@ export default function PropertyCard({
 
         {/* Badge */}
         <Badge
-          className="absolute top-3 right-3 px-3 py-1 rounded-lg font-medium shadow-md"
-          variant={type === "Buy" ? "default" : "destructive"}
+          className="absolute top-1 right-1 px-2 py-0.5 text-xs rounded-md font-semibold shadow-md ml-3"
+          style={{
+            backgroundColor:
+              type === "Buy" ? "blue" : type === "Sale" ? "red" : "gray",
+            color: "white",
+          }}
         >
           {type}
         </Badge>
       </div>
 
       {/* Content */}
-      <CardContent className="p-4 space-y-2">
+      <CardContent className="p-4 mt-3 space-y-2">
         <h3 className="text-lg font-semibold line-clamp-1">{title}</h3>
         <div className="flex items-center gap-1 text-sm text-muted-foreground">
           <MapPin className="h-4 w-4" />
@@ -321,11 +334,40 @@ export default function PropertyCard({
 
         <div className="text-xl font-bold text-primary">{price}</div>
 
+        {(property_type || property_categories) && (
+          <div className="text-sm font-medium text-muted-foreground mt-1">
+            {property_type && <span>Type: {property_type}</span>}
+            {property_type && property_categories && (
+              <span className="mx-2">|</span>
+            )}
+            {property_categories && (
+              <span>Category: {property_categories}</span>
+            )}
+          </div>
+        )}
+
+        {description && (
+          <p className="text-sm text-muted-foreground line-clamp-3 mt-1">
+            {description}
+          </p>
+        )}
+
         {(bedrooms || bathrooms || area) && (
           <div className="flex gap-3 text-xs text-muted-foreground mt-1">
             {bedrooms && <span>{bedrooms} beds</span>}
             {bathrooms && <span>{bathrooms} baths</span>}
-            {area && <span>{area}</span>}
+            {area && <span>{area} sqft</span>}
+          </div>
+        )}
+
+        {/* Contact Info */}
+        {(contact_name || contact_phone) && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
+            <Phone className="h-4 w-4" />
+            {contact_name && <span>{contact_name}</span>}
+            {contact_name && contact_phone && <span>|</span>}{" "}
+            {/* optional separator */}
+            {contact_phone && <span>{contact_phone}</span>}
           </div>
         )}
 
@@ -342,20 +384,11 @@ export default function PropertyCard({
               <Eye className="h-4 w-4 mr-1" />
               View
             </Button>
-            {/* <div className="col-span-2 px-2">
-            <a
-  href={`tel:${mobile_number}`}
-  className="inline-block px-3 py-1 bg-primary text-white font-medium rounded hover:bg-primary-dark transition-colors duration-200"
-  onClick={() => console.log("Calling Number:", mobile_number)}
->
-  Contact
-</a>
-
-            </div> */}
           </div>
+        </div>
 
-          {/* Icons inline with buttons */}
-          {/* <div className="flex gap-2 pl-2">
+        {/* Icons inline with buttons */}
+        {/* <div className="flex gap-2 pl-2">
            
             <div className="flex gap-2 pt-2">
                <Button
@@ -375,7 +408,6 @@ export default function PropertyCard({
               </Button>
             </div>
           </div> */}
-        </div>
 
         {loggedInUserId && loggedInUserId === user_id && (
           <div className="flex justify-end gap-3 pt-3 border-t mt-2">

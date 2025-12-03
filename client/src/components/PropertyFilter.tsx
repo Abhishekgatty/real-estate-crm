@@ -174,6 +174,8 @@
 //   );
 // }
 
+
+
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -203,8 +205,16 @@ export interface Property {
   bedrooms: number;
   bathrooms: number;
   area_sqft: number;
+   property_categories?: string;
   images: string[];
   description: string;
+  property_type?: string;
+  created_at: string;
+  company_id: string;
+  mobile_number?: string;
+  user_id?: string | null;
+  contact_name?: string;
+  contact_phone?: string; 
 }
 
 interface PropertyListProps {
@@ -225,14 +235,9 @@ export default function PropertyList({ onFiltered }: PropertyListProps) {
   const [propertyTypes, setPropertyTypes] = useState<string[]>([]);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
-
-
-
-
-
   // ---------- Fetch all properties ----------
   // useEffect(() => {
-    
+
   //   async function fetchProperties() {
   //     const { data, error } = await supabase
   //       .from("properties")
@@ -247,121 +252,117 @@ export default function PropertyList({ onFiltered }: PropertyListProps) {
   //   fetchProperties();
   // }, []);
 
+  useEffect(() => {
+    async function fetchProperties() {
+      try {
+        // 1️⃣ Get logged-in user
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
 
- useEffect(() => {
-  async function fetchProperties() {
-    try {
-      // 1️⃣ Get logged-in user
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+        if (userError || !user) {
+          console.error("User not found", userError);
+          return;
+        }
 
-      if (userError || !user) {
-        console.error("User not found", userError);
-        return;
+        // 2️⃣ Fetch user's company_id from users table
+        const { data: userProfile, error: profileError } = await supabase
+          .from("users")
+          .select("company_id")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        if (profileError || !userProfile) {
+          console.error("User profile or company_id not found", profileError);
+          return;
+        }
+
+        const companyId = userProfile.company_id;
+
+        if (!companyId) {
+          console.error("No company linked to this user");
+          return;
+        }
+
+        // 3️⃣ Fetch properties for that company_id
+        const { data: propertiesData, error: propertiesError } = await supabase
+          .from("properties")
+          .select("*")
+          .eq("company_id", companyId)
+          .order("created_at", { ascending: false });
+
+        if (propertiesError) {
+          console.error("Error fetching properties:", propertiesError);
+          return;
+        }
+
+        if (propertiesData) {
+          setProperties(propertiesData);
+          onFiltered(propertiesData);
+        }
+      } catch (err) {
+        console.error("Unexpected error fetching properties:", err);
       }
-
-      // 2️⃣ Fetch user's company_id from users table
-      const { data: userProfile, error: profileError } = await supabase
-        .from("users")
-        .select("company_id")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      if (profileError || !userProfile) {
-        console.error("User profile or company_id not found", profileError);
-        return;
-      }
-
-      const companyId = userProfile.company_id;
-
-      if (!companyId) {
-        console.error("No company linked to this user");
-        return;
-      }
-
-      // 3️⃣ Fetch properties for that company_id
-      const { data: propertiesData, error: propertiesError } = await supabase
-        .from("properties")
-        .select("*")
-        .eq("company_id", companyId)
-        .order("created_at", { ascending: false });
-
-      if (propertiesError) {
-        console.error("Error fetching properties:", propertiesError);
-        return;
-      }
-
-      if (propertiesData) {
-        setProperties(propertiesData);
-        onFiltered(propertiesData);
-      }
-    } catch (err) {
-      console.error("Unexpected error fetching properties:", err);
     }
-  }
 
-  fetchProperties();
-}, []);
-
-
+    fetchProperties();
+  }, []);
 
   // ---------- Fetch distinct filter options ----------
-  
-useEffect(() => {
-  async function fetchDistinct(column: string) {
-    try {
-      // 1️⃣ Get logged-in user
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
 
-      if (userError || !user) {
-        console.error("User not found", userError);
-        return [];
+  useEffect(() => {
+    async function fetchDistinct(column: string) {
+      try {
+        // 1️⃣ Get logged-in user
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
+
+        if (userError || !user) {
+          console.error("User not found", userError);
+          return [];
+        }
+
+        // 2️⃣ Get user's company_id
+        const { data: userProfile, error: profileError } = await supabase
+          .from("users")
+          .select("company_id")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        if (profileError || !userProfile) {
+          console.error("Company id not found", profileError);
+          return [];
+        }
+
+        const companyId = userProfile.company_id;
+
+        // 3️⃣ Fetch distinct values only for this company_id
+        const { data, error } = await supabase
+          .from("properties")
+          .select(column)
+          .eq("company_id", companyId)
+          .not(column, "is", null);
+
+        if (!error && data) {
+          const unique = Array.from(
+            new Set(data.map((r: any) => r[column]))
+          ).filter(Boolean);
+          return unique.sort();
+        }
+      } catch (e) {
+        console.error("Error fetching distinct values:", e);
       }
 
-      // 2️⃣ Get user's company_id
-      const { data: userProfile, error: profileError } = await supabase
-        .from("users")
-        .select("company_id")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      if (profileError || !userProfile) {
-        console.error("Company id not found", profileError);
-        return [];
-      }
-
-      const companyId = userProfile.company_id;
-
-      // 3️⃣ Fetch distinct values only for this company_id
-      const { data, error } = await supabase
-        .from("properties")
-        .select(column)
-        .eq("company_id", companyId)
-        .not(column, "is", null);
-
-      if (!error && data) {
-        const unique = Array.from(new Set(data.map((r: any) => r[column]))).filter(
-          Boolean
-        );
-        return unique.sort();
-      }
-    } catch (e) {
-      console.error("Error fetching distinct values:", e);
+      return [];
     }
 
-    return [];
-  }
-
-  // Fetch location & property types
-  fetchDistinct("location").then(setLocations);
-  fetchDistinct("property_type").then(setPropertyTypes);
-}, []);
-
+    // Fetch location & property types
+    fetchDistinct("location").then(setLocations);
+    fetchDistinct("property_type").then(setPropertyTypes);
+  }, []);
 
   // ---------- Apply filters ----------
   const applyFilters = () => {
@@ -381,9 +382,12 @@ useEffect(() => {
       result = result.filter((p) => p.location.toLowerCase().includes(loc));
     }
 
-    if (filters.propertyType) {
-      result = result.filter((p) => p.listing_type === filters.propertyType);
-    }
+   if (filters.propertyType) {
+  result = result.filter(
+    (p) => p.property_type?.toLowerCase() === filters.propertyType.toLowerCase()
+  );
+}
+
 
     if (filters.minPrice) {
       result = result.filter((p) => p.price >= Number(filters.minPrice));
@@ -419,34 +423,33 @@ useEffect(() => {
       {/* Search & Filters */}
       <div className="flex gap-2">
         <div className="relative flex-1 flex items-center gap-2">
-  <div className="relative flex-1">
-    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-    <Input
-      placeholder="Search properties..."
-      value={filters.search}
-      onChange={(e) => {
-        const value = e.target.value;
-        const updatedFilters = { ...filters, search: value };
-        setFilters(updatedFilters);
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search properties..."
+              value={filters.search}
+              onChange={(e) => {
+                const value = e.target.value;
+                const updatedFilters = { ...filters, search: value };
+                setFilters(updatedFilters);
 
-        if (!value) {
-          // If input is empty, reset filters automatically
-          onFiltered(properties);
-        } else {
-          applyFilters(updatedFilters);
-        }
-      }}
-      className="pl-9"
-    />
-  </div>
+                if (!value) {
+                  // If input is empty, reset filters automatically
+                  onFiltered(properties);
+                } else {
+                  applyFilters(updatedFilters);
+                }
+              }}
+              className="pl-9"
+            />
+          </div>
 
-  {Object.values(filters).some((val) => val) && (
-    <Button onClick={resetFilters} className="flex-none">
-      Remove Filters
-    </Button>
-  )}
-</div>
-
+          {Object.values(filters).some((val) => val) && (
+            <Button onClick={resetFilters} className="flex-none">
+              Remove Filters
+            </Button>
+          )}
+        </div>
 
         <Collapsible open={isFilterOpen} onOpenChange={setIsFilterOpen}>
           <CollapsibleTrigger asChild>

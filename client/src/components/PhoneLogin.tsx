@@ -326,7 +326,7 @@
 //           email: email.trim(),
 //           password,
 //           options: {
-//             // emailRedirectTo: `${window.location.origin}/auth/callback`,
+            // emailRedirectTo: `${window.location.origin}/auth/callback`,
 //              emailRedirectTo:"http://localhost:5000/auth/callback",
 //             data: {
 //               company_code: companyCode,
@@ -821,7 +821,8 @@ export default function AuthForm() {
                 age: age ? parseInt(age) : null,
                 company_code: formattedCode,
               },
-              emailRedirectTo: "http://localhost:5000/auth/callback",
+              // emailRedirectTo: "http://localhost:5000/auth/callback",
+               emailRedirectTo: `${window.location.origin}/auth/callback`,
             },
           });
 

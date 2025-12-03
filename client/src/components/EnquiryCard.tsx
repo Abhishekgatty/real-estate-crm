@@ -431,6 +431,7 @@ interface EnquiryCardProps {
   mobile_number?: string;
   location?: string;
   budget?: string | null;
+  rent_amount?: string | null;
   selling_rate?: string | null;
   date?: string;
   referred_by?: string | null;
@@ -450,6 +451,7 @@ export default function EnquiryCard({
   mobile_number,
   location,
   budget,
+  rent_amount,
   selling_rate,
   date,
   referred_by,
@@ -532,11 +534,18 @@ export default function EnquiryCard({
       </div>
 
       {/* Budget */}
-      <div className="col-span-1 px-2 overflow-x-auto scrollbar-hide">
-       <div className="whitespace-nowrap">
-          {budget ?? selling_rate ?? "-"}
-        </div>
-      </div>
+     <div className="col-span-1 px-2 overflow-x-auto scrollbar-hide">
+  <div className="whitespace-nowrap">
+    {budget
+      ? `₹${budget}`
+      : selling_rate
+      ? `₹${selling_rate}`
+      : rent_amount
+      ? `₹${rent_amount}`
+      : "-"}
+  </div>
+</div>
+
 
       {/* Date */}
        <div className="col-span-1 px-2 overflow-x-auto scrollbar-hide">

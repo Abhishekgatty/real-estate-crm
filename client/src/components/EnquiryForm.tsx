@@ -363,6 +363,8 @@
 // }
 
 
+
+
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -383,9 +385,12 @@ export default function EnquiryForm({
   onSubmit,
   onCancel,
 }: EnquiryFormProps) {
-  const [enquiryType, setEnquiryType] = useState<"buy" | "sell">("buy");
+  const [enquiryType, setEnquiryType] = useState<"buy" | "sell" | "rent">(
+    defaultValues?.listing_type || "buy"
+  );
+
   const [products, setProducts] = useState<any[]>([]);
-  const [statusOptions, setStatusOptions] = useState<any[]>([]); 
+  const [statusOptions, setStatusOptions] = useState<any[]>([]);
 
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split("T")[0],
@@ -397,28 +402,27 @@ export default function EnquiryForm({
     selling_rate: "",
     remarks: "",
     property_id: "",
-    status_id: "" 
+    rent_amount: "",
+    status_id: "",
   });
 
   useEffect(() => {
-  const fetchStatus = async () => {
-    const { data: statusList, error } = await supabase
-      .from("enquiry_status")
-      .select("*")
-      .order("id", { ascending: true });
+    const fetchStatus = async () => {
+      const { data: statusList, error } = await supabase
+        .from("enquiry_status")
+        .select("*")
+        .order("id", { ascending: true });
 
-    if (error) {
-      console.error("Error fetching enquiry status:", error);
-      return;
-    }
+      if (error) {
+        console.error("Error fetching enquiry status:", error);
+        return;
+      }
 
-    setStatusOptions(statusList || []);
-  };
+      setStatusOptions(statusList || []);
+    };
 
-  fetchStatus();
-}, []);
-
-  
+    fetchStatus();
+  }, []);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -444,8 +448,8 @@ export default function EnquiryForm({
       const { data: properties, error } = await supabase
         .from("properties")
         .select("*")
-        .eq("company_id", companyId) // match company
-        // .neq("user_id", userId); // exclude current user
+        .eq("company_id", companyId); // match company
+      // .neq("user_id", userId); // exclude current user
 
       console.log("Properties for company excluding current user:", properties);
       if (error) console.error(error);
@@ -464,14 +468,15 @@ export default function EnquiryForm({
       setFormData({
         date: defaultValues.date || "",
         name: defaultValues.name || "",
-        property_id: formData.property_id,
+        property_id: defaultValues.property_id || "",
         referred_by: defaultValues.referred_by || "",
         mobile_number: defaultValues.mobile_number || "",
         location: defaultValues.location || "",
         budget: defaultValues.budget || "",
         selling_rate: defaultValues.selling_rate || "",
         remarks: defaultValues.remarks || "",
-         status_id: defaultValues.status_id || ""
+        status_id: defaultValues.status_id || "",
+        rent_amount: defaultValues.rent_amount || "",
       });
     }
   }, [defaultValues]);
@@ -525,6 +530,7 @@ export default function EnquiryForm({
             mobile_number: formData.mobile_number,
             location: formData.location,
             selling_rate: formData.selling_rate || null,
+             rent_amount: formData.rent_amount || null,
             remarks: formData.remarks || null,
             status_id: formData.status_id,
             updated_at: new Date().toISOString(),
@@ -544,7 +550,7 @@ export default function EnquiryForm({
       }
 
       // 4️⃣ CREATE NEW ENQUIRY
-     const { data: newEnquiry, error } = await supabase
+      const { data: newEnquiry, error } = await supabase
         .from("enquiries")
         .insert([
           {
@@ -557,10 +563,11 @@ export default function EnquiryForm({
             budget: enquiryType === "buy" ? formData.budget || null : null,
             selling_rate:
               enquiryType === "sell" ? formData.selling_rate || null : null,
+              rent_amount: enquiryType === "rent" ? formData.rent_amount || null : null,
             referred_by: formData.referred_by,
             mobile_number: formData.mobile_number,
             location: formData.location,
-             status_id: formData.status_id,
+            status_id: formData.status_id,
             remarks: formData.remarks || null,
             created_at: new Date().toISOString(),
           },
@@ -573,14 +580,17 @@ export default function EnquiryForm({
         alert("Failed to create enquiry");
         return;
       }
-const description =
-  enquiryType === "buy"
-    ? `Enquiry details: Buy | Budget: ${formData.budget || "N/A"}`
-    : `Enquiry details: Sell | Selling Rate: ${
-        formData.selling_rate || "N/A"
-      }`;
+      const description =
+        enquiryType === "buy"
+          ? `Enquiry details: Buy | Budget: ${formData.budget || "N/A"}`
+          : enquiryType === "sell"
+          ? `Enquiry details: Sell | Selling Rate: ${
+              formData.selling_rate || "N/A"
+            }`
+          : `Enquiry details: Rent | Rent Amount: ${
+              formData.rent_amount || "N/A"
+            }`;
 
-     
       await supabase.from("activity_feed").insert([
         {
           user_id: userId,
@@ -611,11 +621,12 @@ const description =
       <CardContent>
         <Tabs
           value={enquiryType}
-          onValueChange={(v) => setEnquiryType(v as "buy" | "sell")}
+          onValueChange={(v) => setEnquiryType(v as "buy" | "sell" | "rent")}
         >
-          <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsList className="grid w-full grid-cols-3 mb-6">
             <TabsTrigger value="buy">Buy</TabsTrigger>
             <TabsTrigger value="sell">Sell</TabsTrigger>
+            <TabsTrigger value="rent">Rent</TabsTrigger>
           </TabsList>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -658,27 +669,23 @@ const description =
               </select>
             </div>
 
-<div className="space-y-2">
-  <Label htmlFor="status">Status *</Label>
-  <select
-    id="status"
-    value={formData.status_id}
-    onChange={(e) => updateField("status_id", e.target.value)}
-    required
-    className="border rounded-md p-2 w-full md:w-96"
-  >
-    <option value="">Select Status</option>
-    {statusOptions.map((s) => (
-      <option key={s.id} value={s.id}>
-        {s.status_name}
-      </option>
-    ))}
-  </select>
-</div>
-
-
-
-
+            <div className="space-y-2">
+              <Label htmlFor="status">Status *</Label>
+              <select
+                id="status"
+                value={formData.status_id}
+                onChange={(e) => updateField("status_id", e.target.value)}
+                required
+                className="border rounded-md p-2 w-full md:w-96"
+              >
+                <option value="">Select Status</option>
+                {statusOptions.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.status_name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
             <div className="space-y-2">
               <Label htmlFor="referredBy">Referred By</Label>
@@ -733,6 +740,18 @@ const description =
                 />
               </div>
             </TabsContent>
+
+            <TabsContent value="rent" className="mt-0 space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="rentAmount">Rent Amount</Label>
+                  <Input
+                    id="rentAmount"
+                    value={formData.rent_amount}
+                    onChange={(e) => updateField("rent_amount", e.target.value)}
+                    placeholder="e.g., ₹20,000"
+                  />
+                </div>
+              </TabsContent>
 
             <div className="space-y-2">
               <Label htmlFor="remarks">Remarks</Label>
