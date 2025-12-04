@@ -205,6 +205,8 @@
 //   );
 // }
 
+
+
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import ReminderCalendar from "@/components/ReminderCalendar";
@@ -416,8 +418,13 @@ export default function Reminders() {
     if (error) {
       console.error("Error fetching reminders:", error.message);
     } else if (data) {
-      setReminders(data as Reminder[]);
-    }
+  const mappedReminders = data.map((r: any) => ({
+    ...r,
+    clientName: r.client_name, // map from snake_case to camelCase
+  }));
+  setReminders(mappedReminders);
+}
+
 
     setLoading(false);
   };
