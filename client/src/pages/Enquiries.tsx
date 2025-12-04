@@ -504,6 +504,7 @@ export default function Enquiries() {
 const [page, setPage] = useState(1); // for "All" tab
 const [buyPage, setBuyPage] = useState(1);
 const [sellPage, setSellPage] = useState(1);
+const [rentPage, setRentPage] = useState(1);
 const [pageSize] = useState(6); // rows per page, changed from 10 to 5
 const [totalRows, setTotalRows] = useState(0); // total rows for "All" tab
 
@@ -709,6 +710,7 @@ const [totalRows, setTotalRows] = useState(0); // total rows for "All" tab
   // ---- Filter and paginate tabs (Changed) ----
   const filteredBuyEnquiries = enquiries.filter((e) => e.listing_type === "buy");
   const filteredSellEnquiries = enquiries.filter((e) => e.listing_type === "sell");
+  const filteredRentEnquiries = enquiries.filter((e) => e.listing_type === "rent");
 
   const paginatedBuyEnquiries = filteredBuyEnquiries.slice(
     (buyPage - 1) * pageSize,
@@ -719,6 +721,11 @@ const [totalRows, setTotalRows] = useState(0); // total rows for "All" tab
     (sellPage - 1) * pageSize,
     sellPage * pageSize
   );
+  const paginatedRentEnquiries = filteredRentEnquiries.slice(
+  (rentPage - 1) * pageSize,
+  rentPage * pageSize
+);
+
 
 const HeaderRow = () => (
   <div className="grid grid-cols-12 gap-2 items-center py-3 font-semibold text-white bg-primary border-b border-gray-300 text-sm">
@@ -763,10 +770,11 @@ const HeaderRow = () => (
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3 max-w-md">
+        <TabsList className="grid w-full grid-cols-4 max-w-md">
           <TabsTrigger value="all">All</TabsTrigger>
           <TabsTrigger value="buy">Buy</TabsTrigger>
           <TabsTrigger value="sell">Sell</TabsTrigger>
+           <TabsTrigger value="rent">Rent</TabsTrigger>
         </TabsList>
 
         {/* ALL TAB */}
@@ -862,7 +870,45 @@ const HeaderRow = () => (
             </Button>
           </div>
         </TabsContent>
+{/* RENT TAB */}
+<TabsContent value="rent" className="mt-6 w-full">
+  <div className="w-full overflow-x-auto">
+    <HeaderRow />
+    <div className="space-y-2 w-full">
+      {paginatedRentEnquiries.map((enquiry) => (
+        <EnquiryCard
+          key={enquiry.id}
+          {...enquiry}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          onCall={(mobile) => console.log("Call:", mobile)}
+        />
+      ))}
+    </div>
+  </div>
+
+  {/* Pagination */}
+  <div className="flex justify-end items-center gap-2 mt-4">
+    <Button onClick={() => setRentPage(rentPage - 1)} disabled={rentPage === 1} size="sm">
+      Previous
+    </Button>
+    <span>
+      Page {rentPage} of {Math.ceil(filteredRentEnquiries.length / pageSize)}
+    </span>
+    <Button
+      onClick={() => setRentPage(rentPage + 1)}
+      disabled={rentPage >= Math.ceil(filteredRentEnquiries.length / pageSize)}
+      size="sm"
+    >
+      Next
+    </Button>
+  </div>
+</TabsContent>
+
+
       </Tabs>
+
+      
 
       {/* Add/Edit Dialogs */}
       <Dialog open={showAddForm} onOpenChange={setShowAddForm}>

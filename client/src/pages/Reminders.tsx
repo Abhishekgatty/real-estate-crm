@@ -9,14 +9,14 @@
 // import { Plus } from "lucide-react";
 
 // const mockReminders = [
-  // {
-  //   id: "1",
-  //   title: "Follow up on property viewing for Downtown Apartment",
-  //   clientName: "John Smith",
-  //   date: "Nov 15, 2025",
-  //   time: "10:00 AM",
-  //   status: "pending" as const
-  // },
+// {
+//   id: "1",
+//   title: "Follow up on property viewing for Downtown Apartment",
+//   clientName: "John Smith",
+//   date: "Nov 15, 2025",
+//   time: "10:00 AM",
+//   status: "pending" as const
+// },
 //   {
 //     id: "2",
 //     title: "Send contract documents",
@@ -87,7 +87,7 @@
 //             onSelectDate={(date) => console.log("Selected date:", date)}
 //           />
 //         </div>
-        
+
 //         <div className="space-y-4">
 //           <h3 className="font-semibold text-lg">Upcoming Reminders</h3>
 //           {mockReminders
@@ -205,14 +205,16 @@
 //   );
 // }
 
-
-
-
-import { useState,useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import ReminderCalendar from "@/components/ReminderCalendar";
 import ReminderCard from "@/components/ReminderCard";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -231,10 +233,7 @@ interface Reminder {
   user_id: string;
 }
 
-
-
 // Inside your component after fetching reminders from Supabase
-
 
 export default function Reminders() {
   const [showAddForm, setShowAddForm] = useState(false);
@@ -243,123 +242,145 @@ export default function Reminders() {
     clientName: "",
     date: "",
     time: "",
-    notes: ""
+    notes: "",
   });
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(false);
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
-const [updatingId, setUpdatingId] = useState<string | null>(null);
-  
- const calendarReminders = reminders.map(r => ({
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  const calendarReminders = reminders.map((r) => ({
     id: r.id,
     date: r.date, // ensure YYYY-MM-DD format
     title: r.title,
-    time: r.time
+    time: r.time,
   }));
 
-const handleAddReminder = async (e: React.FormEvent) => {
-  e.preventDefault();
+  const handleAddReminder = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-  if (!formData.title || !formData.clientName || !formData.date || !formData.time) return;
+    if (
+      !formData.title ||
+      !formData.clientName ||
+      !formData.date ||
+      !formData.time
+    )
+      return;
 
-  // Get current user
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-  if (userError || !user) {
-    alert("User not authenticated!");
-    console.error("User error:", userError);
-    return;
-  }
-  const userId = user.id;
+    // Get current user
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+    if (userError || !user) {
+      alert("User not authenticated!");
+      console.error("User error:", userError);
+      return;
+    }
+    const userId = user.id;
 
-         const { data: userProfile, error: profileError } = await supabase
-  .from("users")
-  .select("company_id")
-  .eq("id", user.id)
-  .single();
+    const { data: userProfile, error: profileError } = await supabase
+      .from("users")
+      .select("company_id")
+      .eq("id", user.id)
+      .single();
 
-if (profileError || !userProfile) {
-  console.error("User profile not found", profileError);
-  alert("❌ User profile not found. Please contact support.");
-  return;
-}
-
-const companyId = userProfile.company_id;
-
-  if (editingReminder) {
-    // ----- UPDATE EXISTING REMINDER -----
-    const { error } = await supabase
-      .from("reminders")
-      .update({
-        title: formData.title,
-        client_name: formData.clientName,
-        date: formData.date,
-        time: formData.time,
-        notes: formData.notes
-      })
-      .eq("id", editingReminder.id);
-
-    if (error) {
-      console.error("Error updating reminder:", error.message);
-      alert("Failed to update reminder.");
-    } else {
-      // Update parent state
-      setReminders(prev =>
-        prev.map(r => (r.id === editingReminder.id ? { ...r, ...formData } : r))
-      );
-      setEditingReminder(null); // reset editing state
-      setFormData({ title: "", clientName: "", date: "", time: "", notes: "" });
-      setShowAddForm(false);
+    if (profileError || !userProfile) {
+      console.error("User profile not found", profileError);
+      alert("❌ User profile not found. Please contact support.");
+      return;
     }
 
-  } else {
-    // ----- ADD NEW REMINDER -----
-    const { data, error } = await supabase
-      .from("reminders")
-      .insert({
-        title: formData.title,
-         company_id: companyId, 
-        client_name: formData.clientName,
-        date: formData.date,
-        time: formData.time,
-        notes: formData.notes,
-        status: "pending",
-        user_id: userId
-      })
-      .select("*");
+    const companyId = userProfile.company_id;
 
-    if (error) {
-      console.error("Error adding reminder:", error.message);
-      alert("Failed to add reminder.");
-    } else if (data && data.length > 0) {
+    if (editingReminder) {
+      // ----- UPDATE EXISTING REMINDER -----
+      const { error } = await supabase
+        .from("reminders")
+        .update({
+          title: formData.title,
+          client_name: formData.clientName,
+          date: formData.date,
+          time: formData.time,
+          notes: formData.notes,
+        })
+        .eq("id", editingReminder.id);
 
+      if (error) {
+        console.error("Error updating reminder:", error.message);
+        alert("Failed to update reminder.");
+      } else {
+        // Update parent state
+        setReminders((prev) =>
+          prev.map((r) =>
+            r.id === editingReminder.id ? { ...r, ...formData } : r
+          )
+        );
+        setEditingReminder(null); // reset editing state
+        setFormData({
+          title: "",
+          clientName: "",
+          date: "",
+          time: "",
+          notes: "",
+        });
+        setShowAddForm(false);
+      }
+    } else {
+      // ----- ADD NEW REMINDER -----
+      const { data, error } = await supabase
+        .from("reminders")
+        .insert({
+          title: formData.title,
+          company_id: companyId,
+          client_name: formData.clientName,
+          date: formData.date,
+          time: formData.time,
+          notes: formData.notes,
+          status: "pending",
+          user_id: userId,
+        })
+        .select("*");
+
+      if (error) {
+        console.error("Error adding reminder:", error.message);
+        alert("Failed to add reminder.");
+      } else if (data && data.length > 0) {
         const newReminder = data[0];
 
-  // ⭐ ADD NOTIFICATION
-  await supabase.from("activity_feed").insert([
-    {
-      user_id: userId,
-      company_id: companyId,
-      action_type: "reminder",
-      title: `Reminder Added`,
-      description: `Reminder for ${formData.clientName} on ${formData.date} at ${formData.time}`,
-      related_id: newReminder.id,
-      created_at: new Date().toISOString(),
+        // ⭐ ADD NOTIFICATION
+        await supabase.from("activity_feed").insert([
+          {
+            user_id: userId,
+            company_id: companyId,
+            action_type: "reminder",
+            title: `Reminder Added`,
+            description: `Reminder for ${formData.clientName} on ${formData.date} at ${formData.time}`,
+            related_id: newReminder.id,
+            created_at: new Date().toISOString(),
+          },
+        ]);
+        setReminders((prev) => [...prev, data[0]]);
+        setShowAddForm(false);
+        setFormData({
+          title: "",
+          clientName: "",
+          date: "",
+          time: "",
+          notes: "",
+        });
+      }
     }
-  ]);
-      setReminders(prev => [...prev, data[0]]);
-      setShowAddForm(false);
-      setFormData({ title: "", clientName: "", date: "", time: "", notes: "" });
-    }
-  }
-};
+  };
 
-
-
-const fetchReminders = async () => {
+  const fetchReminders = async () => {
     setLoading(true);
 
     // Get current user
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
 
     if (userError || !user) {
       console.error("User not authenticated:", userError);
@@ -367,11 +388,9 @@ const fetchReminders = async () => {
       return;
     }
 
-    
-
     const userId = user.id;
 
-      const { data: userProfile, error: profileError } = await supabase
+    const { data: userProfile, error: profileError } = await supabase
       .from("users")
       .select("company_id")
       .eq("id", userId)
@@ -407,96 +426,212 @@ const fetchReminders = async () => {
     fetchReminders();
   }, []);
 
-
   const handleDelete = async (id: string) => {
-  const confirmed = window.confirm("Are you sure you want to delete this reminder?");
-  if (!confirmed) return;
-
-  // Delete from Supabase
-  const { error } = await supabase.from("reminders").delete().eq("id", id);
-
-  if (error) {
-    alert("Failed to delete reminder: " + error.message);
-    console.error(error);
-  } else {
-    // Update state to remove from UI
-    setReminders((prev) => prev.filter((r) => r.id !== id));
-  }
-};
-
-const handleEdit = (id: string) => {
-  const reminder = reminders.find(r => r.id === id); // find reminder by id
-  if (reminder) {
-    setEditingReminder(reminder); // store it in state
-    setFormData({
-      title: reminder.title,
-    clientName: reminder.clientName,
-      date: reminder.date,
-      time: reminder.time,
-      notes: reminder.notes || ""
-    });
-    setShowAddForm(true); // open the form
-  }
-};
-
-
-
-const handleComplete = async (id: string) => {
-  setUpdatingId(id);
-  const reminder = reminders.find((r) => r.id === id);
-  if (!reminder) return;
-
-  const newStatus = reminder.status === "completed" ? "pending" : "completed";
-
-  const { error } = await supabase
-    .from("reminders")
-    .update({ status: newStatus })
-    .eq("id", id);
-
-  if (error) {
-    console.error("Error updating reminder status:", error.message);
-    alert("Failed to update status");
-  } else {
-    setReminders((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, status: newStatus } : r))
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this reminder?"
     );
-  }
+    if (!confirmed) return;
 
-  setUpdatingId(null);
-};
-  useEffect(() => {
-    const audio = new Audio("/notification.mp3"); // your alert sound
-    const notifiedReminders = new Set<string>();
+    // Delete from Supabase
+    const { error } = await supabase.from("reminders").delete().eq("id", id);
 
-    const checkReminders = () => {
-      const now = new Date();
-      const nowTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-      const today = now.toISOString().split("T")[0];
+    if (error) {
+      alert("Failed to delete reminder: " + error.message);
+      console.error(error);
+    } else {
+      // Update state to remove from UI
+      setReminders((prev) => prev.filter((r) => r.id !== id));
+    }
+  };
 
-      reminders.forEach(reminder => {
-        if (reminder.date === today && reminder.time === nowTime && reminder.status === "pending" && !notifiedReminders.has(reminder.id)) {
-          // Play audio
-          audio.play().catch(err => console.error(err));
-
-          // In-app toast
-          toast(`Reminder: ${reminder.title} - Client: ${reminder.clientName}`);
-
-          // Browser notification if allowed
-          if (Notification.permission === "granted") {
-            new Notification(`Reminder: ${reminder.title}`, {
-              body: `Client: ${reminder.clientName}\nTime: ${reminder.time}`,
-              icon: "/notification-icon.png"
-            });
-          }
-
-          notifiedReminders.add(reminder.id);
-        }
+  const handleEdit = (id: string) => {
+    const reminder = reminders.find((r) => r.id === id); // find reminder by id
+    if (reminder) {
+      setEditingReminder(reminder); // store it in state
+      setFormData({
+        title: reminder.title,
+        clientName: reminder.clientName,
+        date: reminder.date,
+        time: reminder.time,
+        notes: reminder.notes || "",
       });
-    };
+      setShowAddForm(true); // open the form
+    }
+  };
 
-    const interval = setInterval(checkReminders, 60000);
-    return () => clearInterval(interval);
-  }, [reminders]);
+  const handleComplete = async (id: string) => {
+    setUpdatingId(id);
+    const reminder = reminders.find((r) => r.id === id);
+    if (!reminder) return;
+
+    const newStatus = reminder.status === "completed" ? "pending" : "completed";
+
+    const { error } = await supabase
+      .from("reminders")
+      .update({ status: newStatus })
+      .eq("id", id);
+
+    if (error) {
+      console.error("Error updating reminder status:", error.message);
+      alert("Failed to update status");
+    } else {
+      setReminders((prev) =>
+        prev.map((r) => (r.id === id ? { ...r, status: newStatus } : r))
+      );
+    }
+
+    setUpdatingId(null);
+  };
+
+  // const notifiedRef = useRef<Set<string>>(new Set());
+  // const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // // Initialize audio only once
+  // useEffect(() => {
+  //   console.log("Audio initialized");
+  //   audioRef.current = new Audio("/notification.mp3");
+  // }, []);
+
+  // useEffect(() => {
+  //   const checkReminders = () => {
+  //     const now = new Date();
+  //     const nowTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  //     const today = now.toISOString().split("T")[0];
+
+  //     console.log("------ Checking Reminders ------");
+  //     console.log("Current Date:", today);
+  //     console.log("Current Time:", nowTime);
+  //     console.log("All reminders:", reminders);
+
+  //    reminders.forEach((reminder) => {
+  //   const reminderDate = reminder.date.split("T")[0];
+  //   const reminderTime = reminder.time.slice(0, 5); // take first 5 characters
+
+  //   const isMatch =
+  //     reminderDate === today &&
+  //     reminderTime === nowTime &&
+  //     reminder.status === "pending";
+
+  //   if (isMatch && !notifiedRef.current.has(reminder.id)) {
+  //     console.log(">>> TRIGGERING REMINDER:", reminder.id);
+
+  //     audioRef.current?.play().catch(console.error);
+
+  //     toast(`Reminder: ${reminder.title} - Client: ${reminder.clientName}`);
+
+  //     if (Notification.permission === "granted") {
+  //       new Notification(`Reminder: ${reminder.title}`, {
+  //         body: `Client: ${reminder.clientName}\nTime: ${reminder.time}`,
+  //         icon: "/notification-icon.png",
+  //       });
+  //     }
+
+  //     notifiedRef.current.add(reminder.id);
+  //   }
+  // });
+
+  //   };
+
+  //   console.log("Starting interval for checkReminders");
+  //   const interval = setInterval(checkReminders, 10000); // 10 seconds for testing
+  //   return () => {
+  //     console.log("Clearing interval");
+  //     clearInterval(interval);
+  //   };
+  // }, [reminders]);
+
+  
+ const notifiedRef = useRef<Set<string>>(new Set());
+const insertedRef = useRef<Set<string>>(new Set());
+const audioRef = useRef<HTMLAudioElement | null>(null);
+const remindersRef = useRef<Reminder[]>([]);
+
+useEffect(() => {
+  remindersRef.current = reminders;
+}, [reminders]);
+
+useEffect(() => {
+  audioRef.current = new Audio("/notification.mp3");
+}, []);
+
+useEffect(() => {
+  const checkReminders = async () => {
+    const now = new Date();
+    const nowDate = now.toISOString().split("T")[0];
+    const nowTime = now.toTimeString().slice(0, 5);
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+    const userId = user.id;
+
+    const { data: userProfile } = await supabase
+      .from("users")
+      .select("company_id")
+      .eq("id", userId)
+      .single();
+    const companyId = userProfile?.company_id;
+
+    for (const reminder of remindersRef.current) {
+      const reminderDate = reminder.date.split("T")[0];
+      const reminderTime = reminder.time.slice(0, 5);
+
+      const alreadyNotified = notifiedRef.current.has(reminder.id);
+      const isMatch =
+        reminder.status === "pending" &&
+        reminderDate === nowDate &&
+        reminderTime === nowTime;
+
+      if (isMatch && !alreadyNotified) {
+        const reminderDateFormatted = new Date(reminder.date).toLocaleDateString();
+
+        try {
+          await audioRef.current?.play();
+        } catch (e) {
+          console.error("Audio error:", e);
+        }
+
+        toast(`Reminder: ${reminder.title} - Client: ${reminder.clientName}`);
+
+        if (Notification.permission === "granted") {
+          new Notification(`Reminder: ${reminder.title}`, {
+            body: `Client: ${reminder.clientName}\nTime: ${reminder.time}`,
+            icon: "/notification-icon.png",
+          });
+        }
+
+        if (!insertedRef.current.has(reminder.id)) {
+          const { data, error } = await supabase
+            .from("activity_feed")
+            .insert([
+              {
+                user_id: reminder.user_id,
+                company_id: companyId,
+                action_type: "reminder",
+                title: "Reminder Triggered",
+                description: `Reminder for ${reminder.clientName} on ${reminderDateFormatted} at ${reminder.time}`,
+                related_id: reminder.id,
+                created_at: new Date().toISOString(),
+              },
+            ])
+            .select("*");
+
+          if (error) console.error("❌ Insert Error:", error);
+          else console.log("✅ Insert Success:", data);
+
+          insertedRef.current.add(reminder.id);
+        }
+
+        notifiedRef.current.add(reminder.id);
+      }
+    }
+  };
+
+  const interval = setInterval(checkReminders, 10000);
+  return () => clearInterval(interval);
+}, []);
+
 
 
   return (
@@ -504,9 +639,14 @@ const handleComplete = async (id: string) => {
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h2 className="text-2xl md:text-3xl font-bold">Reminders</h2>
-          <p className="text-muted-foreground">Track your follow-ups and appointments</p>
+          <p className="text-muted-foreground">
+            Track your follow-ups and appointments
+          </p>
         </div>
-        <Button onClick={() => setShowAddForm(true)} data-testid="button-add-reminder">
+        <Button
+          onClick={() => setShowAddForm(true)}
+          data-testid="button-add-reminder"
+        >
           <Plus className="h-4 w-4 mr-2" />
           Add Reminder
         </Button>
@@ -520,18 +660,18 @@ const handleComplete = async (id: string) => {
             onSelectDate={(date) => console.log("Selected date:", date)}
           />
         </div>
-        
+
         <div className="space-y-4">
           <h3 className="font-semibold text-lg">Upcoming Reminders</h3>
           {reminders
-            .filter(r => r.status !== "completed")
-            .map(reminder => (
+            .filter((r) => r.status !== "completed")
+            .map((reminder) => (
               <ReminderCard
                 key={reminder.id}
                 {...reminder}
                 onComplete={handleComplete}
-               onEdit={handleEdit}
-               onDelete={handleDelete}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
               />
             ))}
         </div>
@@ -540,13 +680,13 @@ const handleComplete = async (id: string) => {
       <div>
         <h3 className="font-semibold text-lg mb-4">All Reminders</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {reminders.map(reminder => (
+          {reminders.map((reminder) => (
             <ReminderCard
               key={reminder.id}
               {...reminder}
-               onComplete={handleComplete}
+              onComplete={handleComplete}
               onEdit={handleEdit}
-               onDelete={handleDelete}
+              onDelete={handleDelete}
             />
           ))}
         </div>
@@ -563,7 +703,9 @@ const handleComplete = async (id: string) => {
               <Input
                 id="title"
                 value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, title: e.target.value })
+                }
                 required
                 data-testid="input-title"
               />
@@ -574,7 +716,9 @@ const handleComplete = async (id: string) => {
               <Input
                 id="clientName"
                 value={formData.clientName}
-                onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, clientName: e.target.value })
+                }
                 required
                 data-testid="input-client-name"
               />
@@ -587,49 +731,62 @@ const handleComplete = async (id: string) => {
                   id="date"
                   type="date"
                   value={formData.date}
-                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, date: e.target.value })
+                  }
                   required
                   data-testid="input-date"
                 />
               </div>
 
               <div className="space-y-2">
-  <Label htmlFor="time">Time *</Label>
-  <div className="grid grid-cols-2 gap-2">
-    
-    {/* Hours (00–23) */}
-    <select
-      className="border rounded px-2 py-2"
-      value={formData.time.split(":")[0] || ""}
-      onChange={(e) => {
-        const minute = formData.time.split(":")[1] || "00";
-        setFormData({ ...formData, time: `${e.target.value}:${minute}` });
-      }}
-    >
-      {Array.from({ length: 24 }, (_, i) => {
-        const hr = String(i).padStart(2, "0");
-        return <option key={hr} value={hr}>{hr}</option>;
-      })}
-    </select>
+                <Label htmlFor="time">Time *</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Hours (00–23) */}
+                  <select
+                    className="border rounded px-2 py-2"
+                    value={formData.time.split(":")[0] || ""}
+                    onChange={(e) => {
+                      const minute = formData.time.split(":")[1] || "00";
+                      setFormData({
+                        ...formData,
+                        time: `${e.target.value}:${minute}`,
+                      });
+                    }}
+                  >
+                    {Array.from({ length: 24 }, (_, i) => {
+                      const hr = String(i).padStart(2, "0");
+                      return (
+                        <option key={hr} value={hr}>
+                          {hr}
+                        </option>
+                      );
+                    })}
+                  </select>
 
-    {/* Minutes (00–59) */}
-    <select
-      className="border rounded px-2 py-2"
-      value={formData.time.split(":")[1] || ""}
-      onChange={(e) => {
-        const hour = formData.time.split(":")[0] || "00";
-        setFormData({ ...formData, time: `${hour}:${e.target.value}` });
-      }}
-    >
-      {Array.from({ length: 60 }, (_, i) => {
-        const min = String(i).padStart(2, "0");
-        return <option key={min} value={min}>{min}</option>;
-      })}
-    </select>
-
-  </div>
-</div>
-
+                  {/* Minutes (00–59) */}
+                  <select
+                    className="border rounded px-2 py-2"
+                    value={formData.time.split(":")[1] || ""}
+                    onChange={(e) => {
+                      const hour = formData.time.split(":")[0] || "00";
+                      setFormData({
+                        ...formData,
+                        time: `${hour}:${e.target.value}`,
+                      });
+                    }}
+                  >
+                    {Array.from({ length: 60 }, (_, i) => {
+                      const min = String(i).padStart(2, "0");
+                      return (
+                        <option key={min} value={min}>
+                          {min}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -637,7 +794,9 @@ const handleComplete = async (id: string) => {
               <Textarea
                 id="notes"
                 value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, notes: e.target.value })
+                }
                 rows={3}
                 data-testid="input-notes"
               />
@@ -653,7 +812,11 @@ const handleComplete = async (id: string) => {
               >
                 Cancel
               </Button>
-              <Button type="submit" className="flex-1" data-testid="button-submit">
+              <Button
+                type="submit"
+                className="flex-1"
+                data-testid="button-submit"
+              >
                 Add Reminder
               </Button>
             </div>
